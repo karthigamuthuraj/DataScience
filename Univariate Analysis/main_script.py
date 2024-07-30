@@ -6,6 +6,10 @@ class UnivariateAnalyser:
         self.dataset = pd.read_csv(file_path)
         self.quantitative = []
         self.qualitative = []
+        self.outliers = {
+            'lesser_outliers': {},
+            'greater_outliers': {}
+        }
 
     def categorize_columns(self):
         # Using select_dtypes to select columns by data types
@@ -19,7 +23,7 @@ class UnivariateAnalyser:
             self.categorize_columns()
 
         # Create a DataFrame to hold statistics
-        descriptive = pd.DataFrame(index=["Mean", "Median", "Mode", "Q1:25%", "Q2:50%", "Q3:75%", "Q4:100%"], columns=self.quantitative)
+        descriptive = pd.DataFrame(index=["Mean", "Median", "Mode", "Q1:25%", "Q2:50%", "Q3:75%", "Q4:100%","IQR","1.5Rule","LesserOutlier","GreaterOutlier","Min","Max"], columns=self.quantitative)
 
         # Calculate statistics for each quantitative column
         for col in self.quantitative:
@@ -30,8 +34,25 @@ class UnivariateAnalyser:
             descriptive.at["Q2:50%", col] = np.percentile(self.dataset[col].dropna(), 50)
             descriptive.at["Q3:75%", col] = np.percentile(self.dataset[col].dropna(), 75)
             descriptive.at["Q4:100%", col] = np.percentile(self.dataset[col].dropna(), 100)
+            descriptive.at["IQR", col] = descriptive.at["Q3:75%", col] - descriptive.at["Q1:25%", col]
+            descriptive.at["1.5Rule", col] = 1.5*descriptive.at["IQR", col]
+            descriptive.at["LesserOutlier", col] = descriptive.at["Q1:25%", col]-descriptive.at["1.5Rule", col]
+            descriptive.at["GreaterOutlier", col] = descriptive.at["Q3:75%", col]+descriptive.at["1.5Rule", col]
+            descriptive.at["Min", col] = self.dataset[col].min()
+            descriptive.at["Max", col] = self.dataset[col].max()
+            
+            # Store outliers by column
+            # Check if there are outliers and store column names
+            if any(self.dataset[col]["Min"] < descriptive.at["LesserOutlier", col]):
+                self.outliers['lesser_outliers'].append(col)
+            if any(self.dataset[col]["Max"] > descriptive.at["GreaterOutlier", col]):
+                self.outliers['greater_outliers'].append(col)
         
         return descriptive
+    
+    
+    def get_outliers(self):
+        return self.outliers
 
 # Usage
 file_path = "Placement.csv"
@@ -44,3 +65,7 @@ print("Qualitative Columns:", qualitative)
 stats_df = analyzer.calculate_statistics()
 
 print(stats_df)
+
+outliers = analyzer.get_outliers()
+
+print(outliers)
