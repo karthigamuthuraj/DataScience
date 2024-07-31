@@ -118,3 +118,35 @@ class UnivariateAnalyser:
 
     def get_outliers(self):
         return self.outliers
+    
+    def frequency_analysis(self, column):
+        """Calculate frequency, relative frequency, and cumulative frequency for a given column."""
+        # Calculate frequency
+        frequency = self.dataset[column].value_counts()
+        
+        # Calculate relative frequency
+        relative_frequency = frequency / len(self.dataset)
+
+        # Calculate cumulative frequency
+        cumulative_frequency = relative_frequency.cumsum()
+
+        # Combine into a DataFrame
+        frequency_table = pd.DataFrame({
+            'Frequency': frequency,
+            'Relative Frequency': relative_frequency,
+            'Cumulative Frequency': cumulative_frequency
+        })
+
+        return frequency_table
+
+    def frequency_analysis_all_quantitative(self):
+        """Calculate frequency, relative frequency, and cumulative frequency for all quantitative columns."""
+        if not self.quantitative:
+            self.categorize_columns()
+
+        all_frequency_tables = {}
+
+        for col in self.quantitative:
+            all_frequency_tables[col] = self.frequency_analysis(col)
+
+        return all_frequency_tables
