@@ -4,12 +4,14 @@ import numpy as np
 class UnivariateAnalyser:
     def __init__(self, file_path):
         self.dataset = pd.read_csv(file_path)
+        self.original_dataset = self.dataset.copy()  # Save a copy of the original dataset
         self.quantitative = []
         self.qualitative = []
         self.outliers = {
-            'lesser_outliers': {},
-            'greater_outliers': {}
+            'lesser_outliers': [],
+            'greater_outliers': []
         }
+        self.replaced_dataset = self.dataset.copy()
 
     def categorize_columns(self):
         # Using select_dtypes to select columns by data types
@@ -43,9 +45,9 @@ class UnivariateAnalyser:
             
             # Store outliers by column
             # Check if there are outliers and store column names
-            if any(self.dataset[col]["Min"] < descriptive.at["LesserOutlier", col]):
+            if any(self.dataset[col] < descriptive.at["LesserOutlier", col]):
                 self.outliers['lesser_outliers'].append(col)
-            if any(self.dataset[col]["Max"] > descriptive.at["GreaterOutlier", col]):
+            if any(self.dataset[col]> descriptive.at["GreaterOutlier", col]):
                 self.outliers['greater_outliers'].append(col)
         
         return descriptive
@@ -53,12 +55,70 @@ class UnivariateAnalyser:
     
     def get_outliers(self):
         return self.outliers
+    
+    def replace_outliers(self):
+        # Ensure quantitative columns are categorized
+        if not self.quantitative:
+            self.categorize_columns()
 
+        # Replace outliers in the dataset
+        for col in self.quantitative:
+            lesser_threshold = self.calculate_statistics().at["LesserOutlier", col]
+            greater_threshold = self.calculate_statistics().at["GreaterOutlier", col]
+           
+            
+            # Replace lesser outliers with the lesser threshold
+            self.replaced_dataset[col] = np.where(self.dataset[col] < lesser_threshold, lesser_threshold, self.dataset[col])
+
+            # Replace greater outliers with the greater threshold
+            self.replaced_dataset[col] = np.where(self.replaced_dataset[col] > greater_threshold, greater_threshold, self.replaced_dataset[col])
+            
+    def compare_datasets(self):
+        # Initialize a list to hold the comparison results
+        comparison_list = []
+
+        # Iterate through each column in the quantitative dataset
+        for col in self.quantitative:
+            # Calculate statistics for the current column
+            stats = self.calculate_statistics()
+
+            # Find lesser and greater outliers in the original dataset
+            lesser_outliers_original = self.dataset[self.dataset[col] < stats.at["LesserOutlier", col]]
+            greater_outliers_original = self.dataset[self.dataset[col] > stats.at["GreaterOutlier", col]]
+
+            # Find lesser and greater outliers in the replaced dataset
+            lesser_outliers_replaced = self.replaced_dataset[self.replaced_dataset[col] < stats.at["LesserOutlier", col]]
+            greater_outliers_replaced = self.replaced_dataset[self.replaced_dataset[col] > stats.at["GreaterOutlier", col]]
+
+            # Append the comparison results for the current column to the list
+            comparison_list.append({
+                'Column': col,
+                'Original Lesser Outliers Count': len(lesser_outliers_original),
+                'Original Greater Outliers Count': len(greater_outliers_original),
+                'Replaced Lesser Outliers Count': len(lesser_outliers_replaced),
+                'Replaced Greater Outliers Count': len(greater_outliers_replaced),
+                'Original Lesser Outliers': lesser_outliers_original[col].tolist(),
+                'Original Greater Outliers': greater_outliers_original[col].tolist(),
+                'Replaced Lesser Outliers': lesser_outliers_replaced[col].tolist(),
+                'Replaced Greater Outliers': greater_outliers_replaced[col].tolist(),
+                'Original Min': self.dataset[col].min(),
+                'Original Max': self.dataset[col].max(),
+                'Replaced Min': self.replaced_dataset[col].min(),
+                'Replaced Max': self.replaced_dataset[col].max()
+            })
+
+        # Convert the list to a DataFrame
+        comparison_df = pd.DataFrame(comparison_list)
+
+        return comparison_df
+    
 # Usage
 file_path = "Placement.csv"
 analyzer = UnivariateAnalyser(file_path)
 quantitative, qualitative = analyzer.categorize_columns()
+original_dataset = analyzer.original_dataset
 
+print("original_dataset:", original_dataset)
 print("Quantitative Columns:", quantitative)
 print("Qualitative Columns:", qualitative)
 
@@ -68,4 +128,14 @@ print(stats_df)
 
 outliers = analyzer.get_outliers()
 
-print(outliers)
+print("outliers:", outliers)
+
+replace_outliers = analyzer.replace_outliers()
+
+print("replaced_dataset:", analyzer.replaced_dataset)
+
+
+compare_datasets = analyzer.compare_datasets()
+
+print(compare_datasets)
+
