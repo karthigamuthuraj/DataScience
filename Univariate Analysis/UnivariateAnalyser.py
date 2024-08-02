@@ -25,7 +25,7 @@ class UnivariateAnalyser:
             self.categorize_columns()
 
         # Create a DataFrame to hold statistics
-        descriptive = pd.DataFrame(index=["Mean", "Median", "Mode", "Q1:25%", "Q2:50%", "Q3:75%", "Q4:100%","IQR","1.5Rule","LesserOutlier","GreaterOutlier","Min","Max"], columns=self.quantitative)
+        descriptive = pd.DataFrame(index=["Mean", "Median", "Mode", "Q1:25%", "Q2:50%", "Q3:75%", "Q4:100%","IQR","1.5Rule","LesserOutlier","GreaterOutlier","Min","Max","Skew","Kurtosis"], columns=self.quantitative)
 
         # Calculate statistics for each quantitative column
         for col in self.quantitative:
@@ -42,6 +42,8 @@ class UnivariateAnalyser:
             descriptive.at["GreaterOutlier", col] = descriptive.at["Q3:75%", col]+descriptive.at["1.5Rule", col]
             descriptive.at["Min", col] = self.dataset[col].min()
             descriptive.at["Max", col] = self.dataset[col].max()
+            descriptive.at["Skew", col] = self.dataset[col].skew()
+            descriptive.at["Kurtosis", col] = self.dataset[col].kurtosis()
             
             
             # Store outliers by column
